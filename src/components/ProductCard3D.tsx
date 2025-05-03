@@ -76,7 +76,7 @@ const ProductCard3D: React.FC<ProductCard3DProps> = ({ product, isHovered }) => 
               }}
             />
             
-            {!product.inStock && (
+            {product.inStock === 0 && (
               <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-20">
                 <span className="bg-white/10 backdrop-blur-md px-4 py-2 rounded-full text-white font-medium border border-white/20">
                   Out of Stock
@@ -84,7 +84,7 @@ const ProductCard3D: React.FC<ProductCard3DProps> = ({ product, isHovered }) => 
               </div>
             )}
             
-            {isHovered && product.inStock && (
+            {isHovered && product.inStock > 0 && (
               <Button
                 onClick={handleAddToCart}
                 className="absolute bottom-4 right-4 z-20 rounded-full w-10 h-10 p-0 bg-gradient-to-r from-[#6ee7b7] to-[#3b82f6] text-black hover:shadow-lg hover:shadow-cyan-500/25"
@@ -121,10 +121,13 @@ const ProductCard3D: React.FC<ProductCard3DProps> = ({ product, isHovered }) => 
             </div>
           </div>
           
-          {/* Category tag */}
-          <div className="mt-4">
+          {/* Category tag and stock count */}
+          <div className="mt-4 flex items-center justify-between">
             <span className="inline-block px-3 py-1 text-xs rounded-full bg-white/10 text-gray-300 border border-white/5">
               {product.category}
+            </span>
+            <span className="text-xs px-2 py-1 rounded bg-green-500/20 text-green-400">
+              {product.inStock} in stock
             </span>
           </div>
         </div>

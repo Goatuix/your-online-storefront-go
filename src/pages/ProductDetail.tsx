@@ -1,12 +1,13 @@
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { Button } from "@/components/ui/button";
 import { getProductById } from "../data/products";
 import { useCart } from "../context/CartContext";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Check, ShoppingCart, Star } from "lucide-react";
+import { useToast } from "../hooks/use-toast";
 
 const ProductDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,17 +15,48 @@ const ProductDetail: React.FC = () => {
   const { addToCart } = useCart();
   const [quantity, setQuantity] = useState(1);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const { toast } = useToast();
+  const cardRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!cardRef.current) return;
+      
+      const { left, top, width, height } = cardRef.current.getBoundingClientRect();
+      const x = (e.clientX - left - width / 2) / 25;
+      const y = (e.clientY - top - height / 2) / 25;
+      
+      cardRef.current.style.transform = `perspective(1000px) rotateX(${-y}deg) rotateY(${x}deg)`;
+    };
+
+    const handleMouseLeave = () => {
+      if (!cardRef.current) return;
+      cardRef.current.style.transform = 'perspective(1000px) rotateX(0) rotateY(0)';
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseleave', handleMouseLeave);
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, []);
 
   if (!product) {
     return (
-      <div className="flex flex-col min-h-screen">
+      <div className="flex flex-col min-h-screen bg-gradient-to-br from-[#1c1d25] to-[#2a2c3d]">
         <Navbar />
         <main className="flex-grow container mx-auto px-4 py-12 text-center">
-          <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
-          <p className="mb-6">The product you are looking for does not exist.</p>
-          <Link to="/products">
-            <Button>View All Products</Button>
-          </Link>
+          <div className="glass-card p-12 max-w-lg mx-auto">
+            <h1 className="text-2xl font-bold mb-4">Product Not Found</h1>
+            <p className="mb-6 text-gray-300">The product you are looking for does not exist.</p>
+            <Link to="/">
+              <Button className="bg-gradient-to-r from-[#6ee7b7] to-[#3b82f6] text-black font-medium">
+                Back to Home
+              </Button>
+            </Link>
+          </div>
         </main>
         <Footer />
       </div>
@@ -33,102 +65,114 @@ const ProductDetail: React.FC = () => {
 
   const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = parseInt(e.target.value);
-    if (value > 0) {
+    if (value > 0 && value <= product.inStock) {
       setQuantity(value);
     }
   };
 
   const handleAddToCart = () => {
     addToCart(product, quantity);
+    toast({
+      title: "Added to cart",
+      description: `${product.name} has been added to your cart.`,
+    });
   };
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <div className="flex flex-col min-h-screen bg-gradient-to-br from-[#1c1d25] to-[#2a2c3d]">
       <Navbar />
       
       <main className="flex-grow">
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-12">
           <Link 
-            to="/products" 
-            className="inline-flex items-center text-sm text-gray-600 hover:text-brand-navy mb-6"
+            to="/" 
+            className="inline-flex items-center text-sm text-gray-400 hover:text-white mb-8 transition-colors"
           >
             <ArrowLeft className="w-4 h-4 mr-1" />
-            Back to products
+            Back to home
           </Link>
           
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-            {/* Product Images */}
-            <div className="space-y-4">
-              <div className="aspect-square overflow-hidden rounded-lg border border-gray-200">
-                <img
-                  src={product.images[activeImageIndex]}
-                  alt={product.name}
-                  className="w-full h-full object-cover"
-                />
+          <div className="product-detail-card overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 glass-card p-8">
+              {/* Product Images */}
+              <div 
+                ref={cardRef} 
+                className="space-y-6 transition-transform duration-300"
+                style={{ transformStyle: 'preserve-3d' }}
+              >
+                <div className="aspect-square overflow-hidden rounded-lg glass-card">
+                  <img
+                    src={product.images[activeImageIndex]}
+                    alt={product.name}
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                  />
+                </div>
+                
+                {product.images.length > 1 && (
+                  <div className="grid grid-cols-4 gap-3">
+                    {product.images.map((image, index) => (
+                      <button
+                        key={index}
+                        className={`aspect-square overflow-hidden rounded-md ${
+                          index === activeImageIndex 
+                            ? "ring-2 ring-[#6ee7b7]" 
+                            : "border border-white/10 hover:border-white/30 transition-colors"
+                        }`}
+                        onClick={() => setActiveImageIndex(index)}
+                      >
+                        <img
+                          src={image}
+                          alt={`${product.name} - View ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               
-              {product.images.length > 1 && (
-                <div className="grid grid-cols-4 gap-2">
-                  {product.images.map((image, index) => (
-                    <button
-                      key={index}
-                      className={`aspect-square overflow-hidden rounded-md ${
-                        index === activeImageIndex ? "ring-2 ring-brand-teal" : "border border-gray-200"
-                      }`}
-                      onClick={() => setActiveImageIndex(index)}
-                    >
-                      <img
-                        src={image}
-                        alt={`${product.name} - View ${index + 1}`}
-                        className="w-full h-full object-cover"
+              {/* Product Details */}
+              <div>
+                <h1 className="text-3xl md:text-4xl font-bold gradient-text">
+                  {product.name}
+                </h1>
+                
+                <div className="mt-4 flex items-center">
+                  <div className="flex items-center">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star 
+                        key={i} 
+                        className={`w-5 h-5 ${i < Math.round(product.rating) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-600'}`}
                       />
-                    </button>
-                  ))}
+                    ))}
+                  </div>
+                  <span className="ml-2 text-sm text-gray-300">{product.rating} out of 5 stars</span>
                 </div>
-              )}
-            </div>
-            
-            {/* Product Details */}
-            <div>
-              <h1 className="text-3xl font-serif font-bold text-gray-900">{product.name}</h1>
-              
-              <div className="mt-3 flex items-center">
-                <div className="flex items-center">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <svg 
-                      key={i} 
-                      className={`w-5 h-5 ${i < Math.round(product.rating) ? 'text-yellow-400' : 'text-gray-300'}`}
-                      fill="currentColor" 
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                  ))}
-                </div>
-                <span className="ml-2 text-sm text-gray-600">{product.rating} out of 5 stars</span>
-              </div>
-              
-              <div className="mt-4">
-                <p className="text-2xl font-semibold text-gray-900">${product.price.toFixed(2)}</p>
-                <p className="mt-1 text-sm text-green-600">
-                  {product.inStock ? "In Stock" : "Out of Stock"}
-                </p>
-              </div>
-              
-              <div className="mt-6">
-                <h3 className="text-lg font-medium text-gray-900">Description</h3>
-                <p className="mt-2 text-gray-600 leading-relaxed">
-                  {product.description}
-                </p>
-              </div>
-              
-              {product.inStock && (
+                
                 <div className="mt-6">
-                  <h3 className="text-lg font-medium text-gray-900">Quantity</h3>
-                  <div className="flex items-center space-x-3 mt-2">
+                  <div className="flex items-center">
+                    <p className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#6ee7b7] to-[#3b82f6]">
+                      ${product.price.toFixed(2)}
+                    </p>
+                    <p className="ml-4 px-3 py-1 bg-green-500/20 text-green-400 rounded-full text-sm font-medium">
+                      {product.inStock} keys in stock
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="mt-8">
+                  <h3 className="text-xl font-semibold text-white mb-3">Description</h3>
+                  <p className="text-gray-300 leading-relaxed">
+                    {product.description}
+                  </p>
+                </div>
+                
+                <div className="mt-8">
+                  <h3 className="text-xl font-semibold text-white mb-3">Quantity</h3>
+                  <div className="flex items-center space-x-3">
                     <button 
                       type="button"
-                      className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-md"
+                      className="w-10 h-10 flex items-center justify-center glass-card hover:bg-white/10 transition-colors"
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     >
                       <span className="text-xl">-</span>
@@ -137,52 +181,49 @@ const ProductDetail: React.FC = () => {
                     <input
                       type="number"
                       min="1"
+                      max={product.inStock}
                       value={quantity}
                       onChange={handleQuantityChange}
-                      className="w-16 text-center border border-gray-300 rounded-md p-2"
+                      className="w-16 text-center bg-white/5 border border-white/10 rounded-md p-2 text-white"
                     />
                     
                     <button 
                       type="button"
-                      className="w-8 h-8 flex items-center justify-center border border-gray-300 rounded-md"
-                      onClick={() => setQuantity(quantity + 1)}
+                      className="w-10 h-10 flex items-center justify-center glass-card hover:bg-white/10 transition-colors"
+                      onClick={() => setQuantity(Math.min(product.inStock, quantity + 1))}
                     >
                       <span className="text-xl">+</span>
                     </button>
                   </div>
                 </div>
-              )}
-              
-              <div className="mt-8 space-y-4">
-                <Button
-                  onClick={handleAddToCart}
-                  className="w-full py-6 bg-brand-navy hover:bg-brand-navy/90 text-white font-medium"
-                  disabled={!product.inStock}
-                >
-                  {product.inStock ? "Add to Cart" : "Out of Stock"}
-                </Button>
                 
-                <Button
-                  variant="outline"
-                  className="w-full py-6 border-gray-300 text-gray-800 hover:bg-gray-50"
-                >
-                  Add to Wishlist
-                </Button>
-              </div>
-              
-              <div className="mt-8 pt-8 border-t">
-                <div className="flex items-center space-x-2">
-                  <svg className="w-5 h-5 text-brand-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <p className="text-sm text-gray-600">Free shipping on orders over $50</p>
+                <div className="mt-10 space-y-4">
+                  <Button
+                    onClick={handleAddToCart}
+                    className="w-full py-6 button-3d bg-gradient-to-r from-[#6ee7b7] to-[#3b82f6] hover:from-[#5ed6a6] hover:to-[#2a71e5] text-black font-medium text-lg"
+                  >
+                    <ShoppingCart className="mr-2 h-5 w-5" />
+                    Add to Cart
+                  </Button>
                 </div>
                 
-                <div className="flex items-center space-x-2 mt-2">
-                  <svg className="w-5 h-5 text-brand-teal" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <p className="text-sm text-gray-600">30-day return policy</p>
+                <div className="mt-8 pt-8 border-t border-white/10">
+                  <div className="space-y-3">
+                    <div className="flex items-center">
+                      <Check className="w-5 h-5 text-[#6ee7b7] mr-2" />
+                      <p className="text-gray-300">Instant digital delivery</p>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <Check className="w-5 h-5 text-[#6ee7b7] mr-2" />
+                      <p className="text-gray-300">24/7 premium support</p>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <Check className="w-5 h-5 text-[#6ee7b7] mr-2" />
+                      <p className="text-gray-300">Secure payment processing</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
